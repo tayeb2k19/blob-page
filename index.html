@@ -3,81 +3,146 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>جارٍ التحويل إلى جلسة Blob…</title>
+  <title>تسجيل الدخول</title>
   <style>
+    :root{--bg:#0f172a;--card:#0b1220;--accent:#22c55e;--muted:#94a3b8}
     body{
-      font-family: system-ui, "Segoe UI", Arial;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      min-height:100vh;
-      margin:0;
-      background:#0f172a;
-      color:#e2e8f0;
+      margin:0;min-height:100vh;display:grid;place-items:center;
+      font-family:system-ui, "Segoe UI", Arial; background:var(--bg); color:#e6eef8;
     }
     .card{
-      background:#111827;
-      padding:20px 26px;
-      border-radius:12px;
-      text-align:center;
-      box-shadow:0 8px 24px rgba(0,0,0,.35);
+      width:100%;max-width:420px;padding:24px;border-radius:12px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      box-shadow:0 10px 30px rgba(2,6,23,0.6); border:1px solid #111827;
     }
-    small{display:block;opacity:.75;margin-top:8px}
+    h1{font-size:20px;margin:0 0 14px;text-align:center;color:var(--accent)}
+    label{display:block;margin-top:12px;font-size:14px;color:var(--muted)}
+    input{
+      width:100%;padding:10px 12px;margin-top:6px;border-radius:8px;border:1px solid #1f2937;
+      background:transparent;color:inherit;font-size:15px;box-sizing:border-box;
+    }
+    .row{display:flex;gap:8px;margin-top:14px}
+    button{
+      flex:1;padding:10px;border-radius:8px;border:0;background:var(--accent);
+      color:#081122;font-weight:700;cursor:pointer;font-size:15px;
+    }
+    small{display:block;margin-top:10px;color:var(--muted);text-align:center}
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2>جاري فتح جلسة محلية (blob:)</h2>
-    <p>إذا لم يحدث تحويل تلقائي، انتظر ثانية أو حمّل الصفحة مجددًا.</p>
-    <small>لا يوجد أي تبادل بيانات خارجية — العملية تتم محليًا في متصفحك.</small>
+  <div class="card" role="main">
+    <h1>تسجيل الدخول</h1>
+    <form id="loginForm" autocomplete="off" novalidate>
+      <label for="username">اسم المستخدم</label>
+      <input id="username" name="username" type="text" inputmode="text" required />
+
+      <label for="password">كلمة المرور</label>
+      <input id="password" name="password" type="password" required />
+
+      <div class="row">
+        <button type="submit">دخول</button>
+      </div>
+
+      <small id="status">لن تُرسَل أي بيانات إلى خوادم خارجية — كل شيء محلي في المتصفح.</small>
+    </form>
   </div>
 
-  <script>
-    (function(){
-      // محتوى الصفحة التي سيتم فتحها داخل جلسة blob
-      const blobHtml = `<!DOCTYPE html>
+<script>
+(async function(){
+  const form = document.getElementById('loginForm');
+  const status = document.getElementById('status');
+
+  // helper: string -> ArrayBuffer
+  function str2ab(str){
+    const enc = new TextEncoder();
+    return enc.encode(str);
+  }
+  // helper: ArrayBuffer -> hex
+  function ab2hex(buf){
+    const view = new Uint8Array(buf);
+    return Array.from(view).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  async function sha256Hex(message){
+    const data = str2ab(message);
+    const hashBuf = await crypto.subtle.digest('SHA-256', data);
+    return ab2hex(hashBuf);
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    status.textContent = 'جارٍ المعالجة...';
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+
+    if(!username || !password){
+      status.textContent = 'المرجو تعبئة الحقول أولاً.';
+      return;
+    }
+
+    try {
+      // حساب هاش كلمة المرور محليًا (لا نرسل الكلمة الحقيقية)
+      const passHash = await sha256Hex(password);
+
+      // اختياري: خزّن فقط اسم المستخدم (غير حساس) في sessionStorage إن أردت
+      try { sessionStorage.setItem('lastUser', username); } catch(_) {}
+
+      // بناء صفحة الـ blob التي ستفتح محليًا
+      const blobHtml = `
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>صفحة من Blob</title>
+  <title>مرحبا ${escapeHtml(username)}</title>
   <style>
-    body{font-family:system-ui,Segoe UI,Arial;display:grid;place-items:center;min-height:100vh;background:#111827;color:#e2e8f0;margin:0}
+    body{font-family:system-ui,Segoe UI,Arial;display:grid;place-items:center;min-height:100vh;background:#0b1220;color:#e6eef8;margin:0}
     .wrap{max-width:720px;padding:24px;text-align:center}
-    h1{margin:0 0 8px;color:#22c55e}
-    p{line-height:1.6;color:#cbd5e1}
-    code{background:#0b1220;color:#93c5fd;padding:.2em .4em;border-radius:6px}
+    h1{color:#22c55e;margin:0 0 8px}
+    p{color:#cbd5e1;line-height:1.6}
+    code{background:#07101a;padding:.2em .4em;border-radius:6px}
+    small{display:block;margin-top:12px;color:#94a3b8}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>✅ تم فتح الصفحة عبر <code>blob:</code></h1>
-    <p>هذه الصفحة مولَّدة محليًا داخل متصفحك باستخدام <code>URL.createObjectURL</code>.</p>
-    <p>الوقت الآن: <span id="now"></span></p>
-    <script>
-      document.getElementById('now').textContent = new Date().toLocaleString();
-    <\/script>
+    <h1>مرحبًا، ${escapeHtml(username)} ✅</h1>
+    <p>تمّ تسجيل الدخول محليًا داخل متصفحك — هذه الصفحة مولَّدة باستخدام <code>blob:</code>.</p>
+    <p>الوقت: <strong id="now"></strong></p>
+    <p><small>تم حساب SHA-256 لكلمة المرور محليًا (عرض الـ hash فقط لأغراض العرض).</small></p>
+    <pre style="max-width:90%;overflow:auto;background:#07101a;padding:10px;border-radius:8px;border:1px solid #111827;color:#9fb9ff">${passHash}</pre>
+    <small>لا تُرسل الصفحة أي بيانات إلى خوادم خارجية.</small>
   </div>
+  <script>document.getElementById('now').textContent = new Date().toLocaleString();</script>
 </body>
 </html>`.trim();
 
-      // إنشاء Blob وURL ثم الانتقال إليه فورًا
-      try {
-        const blob = new Blob([blobHtml], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
+      // انشاء الـ Blob وفتحها فورًا في نفس النافذة
+      const blob = new Blob([blobHtml], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
 
-        // فتح الـ blob في نفس النافذة (تغيير العنوان حقيقي)
-        // استخدم window.location.replace(url) إذا تبي تمنع الرجوع للصفحة الحالية
-        window.location.href = url;
+      // افتح الـ blob في نفس النافذة (تمنع الرجوع للصفحة السابقة)
+      window.location.replace(url);
 
-        // تنظيف الرابط المؤقت بعد 15 ثانية (نظريًا — يمكن أن يفشل التنظيف إذا تم التنقل بعيدًا جدًا)
-        setTimeout(() => {
-          try { URL.revokeObjectURL(url); } catch(e) { /* تجاهل أخطاء التنظيف */ }
-        }, 15000);
-      } catch (err) {
-        console.error('خطأ أثناء إنشاء جلسة blob:', err);
-      }
-    })();
-  </script>
+      // تنظيف الـ object URL بعد مدة (نظريًا)
+      setTimeout(()=>{ try{ URL.revokeObjectURL(url); } catch(e){} }, 15000);
+
+    } catch (err) {
+      console.error(err);
+      status.textContent = 'حدث خطأ داخلي، حاول مجددًا.';
+    }
+  });
+
+  // small helper لتفادي XSS عند إدراج اسم المستخدم في الـ HTML
+  function escapeHtml(s){
+    return String(s)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#39;');
+  }
+})();
+</script>
 </body>
 </html>
